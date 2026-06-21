@@ -1,4 +1,3 @@
-```php
 <?php
 
 ini_set('display_errors', 1);
@@ -69,4 +68,4 @@ file_get_contents(
 
 echo "WITHDRAWAL RECEIVED";
 ?>
-```
+
