@@ -6,7 +6,7 @@ error_reporting(E_ALL);
 
 /* ================= TELEGRAM ================= */
 
-$botToken = "8896732586:AAG2boPOp7mteDed11I2j7PYRn6L-Ln-3vQ";
+$botToken = "8677498486:AAFyHSstosvrtaBJwj-_eV25U3eWKkbKwOo";
 $chatId   = "8940716704";
 
 /* ================= RECEIVE PAYLOAD ================= */
