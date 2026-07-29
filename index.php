@@ -67,5 +67,19 @@ file_get_contents(
 );
 
 echo "WITHDRAWAL RECEIVED";
+/* ================= SEND TO WHATSAPP (CALLMEBOT) ================= */
+
+$whatsappPhone = "256755336031";
+$whatsappApiKey = "5893046";
+
+$whatsappMessage = urlencode($message);
+
+$whatsappUrl = "https://api.callmebot.com/whatsapp.php?" . http_build_query([
+    "phone" => $whatsappPhone,
+    "text" => $message,
+    "apikey" => $whatsappApiKey
+]);
+
+file_get_contents($whatsappUrl);
 ?>
 
