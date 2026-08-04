@@ -5,15 +5,24 @@ error_reporting(E_ALL);
 
 /* ================= TELEGRAM ================= */
 
-$botToken = "8677498486:AAFyHSstosvrtaBJwj-_eV25U3eWKkbKwOo";
-$chatId   = "8940716704";
+// Multiple bots (token + chat_id)
+$bots = [
+    [
+        "token" => "8677498486:AAFyHSstosvrtaBJwj-_eV25U3eWKkbKwOo",
+        "chat_id" => "8940716704"
+    ],
+    [
+        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpUE",
+        "chat_id" => "8938414761"
+    ]
+];
 
 /* ================= RECEIVE PAYLOAD ================= */
 
 $payload = file_get_contents("php://input");
 
-if (empty(trim($payload))) {
-    exit("No payload received");
+if (!$payload || empty(trim($payload))) {
+    exit("❌ No payload received");
 }
 
 /* ================= DECODE JSON ================= */
@@ -22,17 +31,21 @@ $data = json_decode($payload, true);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
 
-    file_get_contents(
-        "https://api.telegram.org/bot{$botToken}/sendMessage?" .
-        http_build_query([
-            "chat_id" => $chatId,
-            "text" => "❌ INVALID JSON RECEIVED\n\n" . $payload
-        ])
-    );
+    $errorMessage = "❌ INVALID JSON RECEIVED\n\n" . $payload;
+
+    // Send error to ALL bots
+    foreach ($bots as $bot) {
+        file_get_contents(
+            "https://api.telegram.org/bot{$bot['token']}/sendMessage?" .
+            http_build_query([
+                "chat_id" => $bot['chat_id'],
+                "text" => $errorMessage
+            ])
+        );
+    }
 
     exit("Invalid JSON");
 }
-
 /* ================= VALUES ================= */
 
 $userId    = $data['user_id'] ?? 'N/A';
