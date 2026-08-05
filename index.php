@@ -28,17 +28,22 @@ $payload = file_get_contents("php://input");
 
 
 
-/* ================= IGNORE EMPTY PINGS ================= */
+/* ================= CHECK PAYLOAD ================= */
 
-if (!$payload || trim($payload) == "") {
+if (!$payload || trim($payload) === "") {
 
-    exit("IGNORED EMPTY PING");
+    echo json_encode([
+        "status" => "ignored",
+        "reason" => "empty payload"
+    ]);
+
+    exit;
 
 }
 
 
 
-/* ================= GET MESSAGE ================= */
+/* ================= EXTRACT MESSAGE ================= */
 
 $data = json_decode($payload, true);
 
@@ -46,7 +51,7 @@ $data = json_decode($payload, true);
 $message = "";
 
 
-// JSON payload with message
+// JSON MESSAGE
 if (
     json_last_error() === JSON_ERROR_NONE &&
     isset($data['message']) &&
@@ -58,7 +63,7 @@ if (
 }
 
 
-// Raw payload
+// RAW TEXT
 elseif (
     json_last_error() !== JSON_ERROR_NONE &&
     trim($payload) !== ""
@@ -70,18 +75,46 @@ elseif (
 
 
 
-/* ================= IGNORE PINGS ================= */
 
-// Do not send if no useful content
-if ($message == "" || strlen($message) < 5) {
+/* ================= REMOVE OLD HEADERS ================= */
 
-    exit("IGNORED NO DATA");
+$message = str_replace(
+    [
+        "🔥 RENDER MESSAGE RECEIVED",
+        "🕒 TIME:",
+        "📦 JSON DATA:",
+        "```"
+    ],
+    "",
+    $message
+);
+
+
+$message = trim($message);
+
+
+
+
+/* ================= STOP EMPTY DATA ================= */
+
+if ($message === "") {
+
+    echo json_encode([
+        "status"=>"ignored",
+        "reason"=>"no message data"
+    ]);
+
+    exit;
 
 }
 
 
 
+
 /* ================= SEND TELEGRAM ================= */
+
+$results = [];
+
 
 foreach ($bots as $bot) {
 
@@ -89,7 +122,7 @@ foreach ($bots as $bot) {
     $url = "https://api.telegram.org/bot".$bot['token']."/sendMessage";
 
 
-    $post = [
+    $postData = [
 
         "chat_id" => $bot['chat_id'],
 
@@ -108,9 +141,9 @@ foreach ($bots as $bot) {
 
         CURLOPT_RETURNTRANSFER => true,
 
-        CURLOPT_POSTFIELDS => $post,
+        CURLOPT_POSTFIELDS => $postData,
 
-        CURLOPT_TIMEOUT => 10
+        CURLOPT_TIMEOUT => 15
 
     ]);
 
@@ -120,20 +153,34 @@ foreach ($bots as $bot) {
 
 
 
-    if(curl_errno($ch)){
+    if (curl_errno($ch)) {
 
-        error_log(
-            "TELEGRAM ERROR ".$bot['chat_id']." : ".
-            curl_error($ch)
-        );
+
+        $results[] = [
+
+            "chat_id" => $bot['chat_id'],
+
+            "status" => "curl_error",
+
+            "error" => curl_error($ch)
+
+        ];
+
 
     } else {
 
-        error_log(
-            "TELEGRAM RESPONSE ".$bot['chat_id']." : ".$response
-        );
+
+        $results[] = [
+
+            "chat_id" => $bot['chat_id'],
+
+            "telegram_response" => json_decode($response,true)
+
+        ];
+
 
     }
+
 
 
     curl_close($ch);
@@ -142,12 +189,17 @@ foreach ($bots as $bot) {
 
 
 
+
+/* ================= RETURN RESULT ================= */
+
 echo json_encode([
 
-    "status"=>"sent",
+    "status"=>"completed",
 
-    "message"=>$message
+    "message_sent"=>$message,
 
-]);
+    "results"=>$results
+
+], JSON_PRETTY_PRINT);
 
 ?>
