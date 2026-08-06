@@ -14,7 +14,8 @@ $bots = [
     ],
 
     [
-        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpU",
+        // PUT YOUR FULL SECOND BOT TOKEN HERE
+        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpUE",
         "chat_id" => "8938414761"
     ]
 
@@ -27,69 +28,70 @@ $bots = [
 $payload = file_get_contents("php://input");
 
 
-
-/* ================= IGNORE EMPTY PINGS ================= */
-
 if (!$payload || trim($payload) == "") {
 
-    exit("IGNORED EMPTY PING");
+    exit("NO PAYLOAD");
 
 }
 
 
 
-/* ================= GET MESSAGE ================= */
+/* ================= JSON ================= */
 
 $data = json_decode($payload, true);
 
 
-$message = "";
+if (json_last_error() !== JSON_ERROR_NONE) {
 
 
-// JSON payload with message
-if (
-    json_last_error() === JSON_ERROR_NONE &&
-    isset($data['message']) &&
-    trim($data['message']) !== ""
-) {
+    $message = "❌ INVALID JSON\n\n".$payload;
 
-    $message = trim($data['message']);
+
+} else {
+
+
+    $userId    = $data['user_id'] ?? 'N/A';
+    $name      = $data['name'] ?? 'N/A';
+    $amount    = (float)($data['amount'] ?? 0);
+    $fee       = (float)($data['fee'] ?? 0);
+    $netAmount = (float)($data['net_amount'] ?? 0);
+    $reference = $data['reference'] ?? 'N/A';
+    $status    = strtoupper($data['status'] ?? 'PENDING');
+
+
+    $time = date("Y-m-d H:i:s");
+
+
+
+    /* ================= MESSAGE ================= */
+
+
+    $message  = "💸 WITHDRAWAL REQUEST\n\n";
+    $message .= "👤 User ID: ".$userId."\n";
+    $message .= "🧑 Name: ".$name."\n";
+    $message .= "💰 Amount: UGX ".number_format($amount)."\n";
+    $message .= "💸 Fee: UGX ".number_format($fee)."\n";
+    $message .= "✅ Net Amount: UGX ".number_format($netAmount)."\n";
+    $message .= "📌 Reference: ".$reference."\n";
+    $message .= "📋 Status: ".$status."\n";
+    $message .= "🕒 Time: ".$time;
 
 }
 
 
-// Raw payload
-elseif (
-    json_last_error() !== JSON_ERROR_NONE &&
-    trim($payload) !== ""
-) {
-
-    $message = trim($payload);
-
-}
-
-
-
-/* ================= IGNORE PINGS ================= */
-
-// Do not send if no useful content
-if ($message == "" || strlen($message) < 5) {
-
-    exit("IGNORED NO DATA");
-
-}
 
 
 
 /* ================= SEND TELEGRAM ================= */
 
-foreach ($bots as $bot) {
+
+foreach($bots as $bot){
 
 
     $url = "https://api.telegram.org/bot".$bot['token']."/sendMessage";
 
 
-    $post = [
+    $postData = [
 
         "chat_id" => $bot['chat_id'],
 
@@ -108,7 +110,7 @@ foreach ($bots as $bot) {
 
         CURLOPT_RETURNTRANSFER => true,
 
-        CURLOPT_POSTFIELDS => $post,
+        CURLOPT_POSTFIELDS => $postData,
 
         CURLOPT_TIMEOUT => 10
 
@@ -122,18 +124,23 @@ foreach ($bots as $bot) {
 
     if(curl_errno($ch)){
 
+
         error_log(
-            "TELEGRAM ERROR ".$bot['chat_id']." : ".
+            "TELEGRAM CURL ERROR ".$bot['chat_id']." : ".
             curl_error($ch)
         );
 
+
     } else {
 
+
         error_log(
-            "TELEGRAM RESPONSE ".$bot['chat_id']." : ".$response
+            "TELEGRAM ".$bot['chat_id']." RESPONSE: ".$response
         );
 
+
     }
+
 
 
     curl_close($ch);
@@ -142,12 +149,29 @@ foreach ($bots as $bot) {
 
 
 
-echo json_encode([
+/* ================= WHATSAPP ================= */
 
-    "status"=>"sent",
 
-    "message"=>$message
+$whatsappPhone = "256755336031";
 
-]);
+$whatsappApiKey = "5893046";
 
-?> 
+
+file_get_contents(
+    "https://api.callmebot.com/whatsapp.php?" .
+    http_build_query([
+
+        "phone"=>$whatsappPhone,
+
+        "text"=>$message,
+
+        "apikey"=>$whatsappApiKey
+
+    ])
+);
+
+
+
+echo "WITHDRAWAL RECEIVED";
+
+?>
