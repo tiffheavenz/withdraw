@@ -1,6 +1,6 @@
 <?php
 
-ini_set('display_errors',1);
+ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 
@@ -8,15 +8,15 @@ error_reporting(E_ALL);
 
 $bots = [
 
-[
-"token"=>"8677498486:AAFyHSstosvrtaBJwj-_eV25U3eWKkbKwOo",
-"chat_id"=>"8940716704"
-],
+    [
+        "token" => "8677498486:AAFyHSstosvrtaBJwj-_eV25U3eWKkbKwOo",
+        "chat_id" => "8940716704"
+    ],
 
-[
-"token"=>"8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpU",
-"chat_id"=>"8938414761"
-]
+    [
+        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpU",
+        "chat_id" => "8938414761"
+    ]
 
 ];
 
@@ -28,38 +28,41 @@ $payload = file_get_contents("php://input");
 
 
 
-/* LOG EVERYTHING RECEIVED */
+/* ================= IGNORE EMPTY PINGS ================= */
 
-file_put_contents(
-    "render_debug.txt",
-    date("Y-m-d H:i:s")."\n".$payload."\n\n",
-    FILE_APPEND
-);
+if (!$payload || trim($payload) == "") {
 
-
-
-if (!$payload || trim($payload)=="") {
-
-    exit("EMPTY PAYLOAD");
+    exit("IGNORED EMPTY PING");
 
 }
 
 
 
-/* ================= EXTRACT MESSAGE ================= */
+/* ================= GET MESSAGE ================= */
 
-$data = json_decode($payload,true);
+$data = json_decode($payload, true);
 
 
 $message = "";
 
 
-
-if(is_array($data) && isset($data['message'])) {
+// JSON payload with message
+if (
+    json_last_error() === JSON_ERROR_NONE &&
+    isset($data['message']) &&
+    trim($data['message']) !== ""
+) {
 
     $message = trim($data['message']);
 
-} else {
+}
+
+
+// Raw payload
+elseif (
+    json_last_error() !== JSON_ERROR_NONE &&
+    trim($payload) !== ""
+) {
 
     $message = trim($payload);
 
@@ -67,11 +70,12 @@ if(is_array($data) && isset($data['message'])) {
 
 
 
-/* ================= STOP EMPTY ================= */
+/* ================= IGNORE PINGS ================= */
 
-if($message==""){
+// Do not send if no useful content
+if ($message == "" || strlen($message) < 5) {
 
-    exit("EMPTY MESSAGE");
+    exit("IGNORED NO DATA");
 
 }
 
@@ -79,51 +83,57 @@ if($message==""){
 
 /* ================= SEND TELEGRAM ================= */
 
-foreach($bots as $bot){
+foreach ($bots as $bot) {
 
 
-    $url="https://api.telegram.org/bot".
-    $bot['token'].
-    "/sendMessage";
+    $url = "https://api.telegram.org/bot".$bot['token']."/sendMessage";
 
 
-    $post=[
+    $post = [
 
-        "chat_id"=>$bot['chat_id'],
+        "chat_id" => $bot['chat_id'],
 
-        "text"=>$message
+        "text" => $message
 
     ];
 
 
 
-    $ch=curl_init($url);
+    $ch = curl_init($url);
 
 
     curl_setopt_array($ch,[
 
-        CURLOPT_POST=>true,
+        CURLOPT_POST => true,
 
-        CURLOPT_POSTFIELDS=>$post,
+        CURLOPT_RETURNTRANSFER => true,
 
-        CURLOPT_RETURNTRANSFER=>true,
+        CURLOPT_POSTFIELDS => $post,
 
-        CURLOPT_TIMEOUT=>15
+        CURLOPT_TIMEOUT => 10
 
     ]);
 
 
 
-    $response=curl_exec($ch);
+    $response = curl_exec($ch);
 
 
-    file_put_contents(
-        "telegram_debug.txt",
-        date("Y-m-d H:i:s").
-        " ".$bot['chat_id']." ".
-        $response."\n",
-        FILE_APPEND
-    );
+
+    if(curl_errno($ch)){
+
+        error_log(
+            "TELEGRAM ERROR ".$bot['chat_id']." : ".
+            curl_error($ch)
+        );
+
+    } else {
+
+        error_log(
+            "TELEGRAM RESPONSE ".$bot['chat_id']." : ".$response
+        );
+
+    }
 
 
     curl_close($ch);
@@ -132,6 +142,12 @@ foreach($bots as $bot){
 
 
 
-echo "SENT";
+echo json_encode([
 
-?>
+    "status"=>"sent",
+
+    "message"=>$message
+
+]);
+
+?> 
