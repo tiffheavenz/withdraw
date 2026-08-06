@@ -4,6 +4,8 @@ ini_set('display_errors',1);
 error_reporting(E_ALL);
 
 
+/* ================= TELEGRAM BOTS ================= */
+
 $bots = [
 
 [
@@ -19,44 +21,117 @@ $bots = [
 ];
 
 
+
+/* ================= RECEIVE PAYLOAD ================= */
+
+$payload = file_get_contents("php://input");
+
+
+
+/* LOG EVERYTHING RECEIVED */
+
+file_put_contents(
+    "render_debug.txt",
+    date("Y-m-d H:i:s")."\n".$payload."\n\n",
+    FILE_APPEND
+);
+
+
+
+if (!$payload || trim($payload)=="") {
+
+    exit("EMPTY PAYLOAD");
+
+}
+
+
+
+/* ================= EXTRACT MESSAGE ================= */
+
+$data = json_decode($payload,true);
+
+
+$message = "";
+
+
+
+if(is_array($data) && isset($data['message'])) {
+
+    $message = trim($data['message']);
+
+} else {
+
+    $message = trim($payload);
+
+}
+
+
+
+/* ================= STOP EMPTY ================= */
+
+if($message==""){
+
+    exit("EMPTY MESSAGE");
+
+}
+
+
+
+/* ================= SEND TELEGRAM ================= */
+
 foreach($bots as $bot){
 
 
-$url = "https://api.telegram.org/bot".$bot['token']."/sendMessage";
+    $url="https://api.telegram.org/bot".
+    $bot['token'].
+    "/sendMessage";
 
 
-$data = [
+    $post=[
 
-"chat_id"=>$bot['chat_id'],
+        "chat_id"=>$bot['chat_id'],
 
-"text"=>"🔥 TEST MESSAGE\n\nBot connection working"
+        "text"=>$message
 
-];
-
-
-$ch=curl_init($url);
-
-
-curl_setopt($ch,CURLOPT_POST,true);
-
-curl_setopt($ch,CURLOPT_POSTFIELDS,$data);
-
-curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-
-
-$response=curl_exec($ch);
-
-
-curl_close($ch);
+    ];
 
 
 
-echo "<pre>";
-echo "BOT ".$bot['chat_id']."\n";
-echo $response;
-echo "\n\n";
-echo "</pre>";
+    $ch=curl_init($url);
+
+
+    curl_setopt_array($ch,[
+
+        CURLOPT_POST=>true,
+
+        CURLOPT_POSTFIELDS=>$post,
+
+        CURLOPT_RETURNTRANSFER=>true,
+
+        CURLOPT_TIMEOUT=>15
+
+    ]);
+
+
+
+    $response=curl_exec($ch);
+
+
+    file_put_contents(
+        "telegram_debug.txt",
+        date("Y-m-d H:i:s").
+        " ".$bot['chat_id']." ".
+        $response."\n",
+        FILE_APPEND
+    );
+
+
+    curl_close($ch);
 
 }
+
+
+
+echo "SENT";
 
 ?>
