@@ -15,7 +15,7 @@ $bots = [
 
     [
         // PUT YOUR FULL SECOND BOT TOKEN HERE
-        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpUE",
+        "token" => "8565074370:AAFz_Opi7kYiAJc5ptVHhsxNzIEPAZIYUpU",
         "chat_id" => "8938414761"
     ]
 
